@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LogisticRegression
+
 df = pd.read_csv('/home/runner/kaggle/titanic/train.csv')
 
 def convert_sex_to_int(sex):
@@ -68,15 +70,17 @@ X_train = train[:,1:]
 Y_test = test[:,0]
 X_test = test[:,1:]
 
-regressor = LinearRegression()
+regressor = LogisticRegression(max_iter = 1000)
 regressor.fit(X_train, Y_train)
 
+print("Logistic Regressor: \n")
+
 cols = ['Constant']+keep_cols[1:]
-coefs = [regressor.intercept_]+[x for x in regressor.coef_]
+coefs = [regressor.intercept_[0]]+[x for x in regressor.coef_[0]]
 
-print({cols[i]:round(coefs[i],4) for i in range(len(cols))})
+print("\tfeatures: "+str(cols)+"\n")
 
-for data in [(X_test,Y_test),(X_train,Y_train)]:
+for data in [(X_train,Y_train),(X_test,Y_test)]:
     predictions = regressor.predict(data[0])
 
     result = [0,0]
@@ -86,4 +90,30 @@ for data in [(X_test,Y_test),(X_train,Y_train)]:
         if output == data[1][i]:
             result[0]+=1
 
-    print(result[0]/result[1])
+    print("\t"+str(result[0]/result[1]))
+
+print("\n\tcoefficients: "+str({cols[i]:round(coefs[i],4) for i in range(len(cols))})+"\n")
+
+regressor = LinearRegression()
+regressor.fit(X_train, Y_train)
+
+print("\nLinear Regressor: \n")
+
+cols = ['Constant']+keep_cols[1:]
+coefs = [regressor.intercept_]+[x for x in regressor.coef_]
+
+print("\tfeatures: "+str(cols)+"\n")
+
+for data in [(X_train,Y_train),(X_test,Y_test)]:
+    predictions = regressor.predict(data[0])
+
+    result = [0,0]
+    for i in range(len(predictions)):
+        output = 1 if predictions[i]>0.5 else 0
+        result[1]+=1
+        if output == data[1][i]:
+            result[0]+=1
+
+    print("\t"+str(result[0]/result[1]))
+
+print("\n\tcoefficients: "+str({cols[i]:round(coefs[i],4) for i in range(len(cols))}))
