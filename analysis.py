@@ -55,9 +55,31 @@ for embarked_loc in df['Embarked'].unique():
 
 del df['Embarked']
 
-keep_cols = ['Survived','Sex','Pclass','Fare','Age','SibSp', 'SibSp>0','Parch>0','Embarked=C', 'Embarked=None', 'Embarked=Q', 'Embarked=S', 'CabinType=A', 'CabinType=B', 'CabinType=C', 'CabinType=D', 'CabinType=E', 'CabinType=F', 'CabinType=G', 'CabinType=None', 'CabinType=T']
-df_train = df[keep_cols][:500]
-df_test = df[keep_cols][500:]
+survived = df['Survived']
+
+df = df[['Sex','Pclass','Fare','Age','SibSp', 'SibSp>0','Parch>0','Embarked=C', 'Embarked=None', 'Embarked=Q', 'Embarked=S', 'CabinType=A', 'CabinType=B', 'CabinType=C', 'CabinType=D', 'CabinType=E', 'CabinType=F', 'CabinType=G', 'CabinType=None', 'CabinType=T']]
+
+columns = [x for x in df.columns]
+
+for col_1 in columns:
+    for col_2 in columns:
+        if '=' in col_1 and '=' in col_2:
+            eq_i_1 = col_1.index('=')
+            eq_i_2 = col_2.index('=')
+            if col_1[:eq_i_1] != col_2[:eq_i_2] and columns.index(col_1) < columns.index(col_2):
+                df[col_1 + ' * ' + col_2] = np.array([df[col_1][i]*df[col_2][i] for i in range(len(df[col_1]))])
+        elif ('SibSp' in col_1 and 'SibSp' in col_2):
+            continue
+        else:
+            if columns.index(col_1) < columns.index(col_2):
+                df[col_1 + ' * ' + col_2] = np.array([df[col_1][i]*df[col_2][i] for i in range(len(df[col_1]))])
+
+df['Survived'] = survived
+df = df[['Survived']+[x for x in df.columns if x != 'Survived']]
+
+
+df_train = df[:500]
+df_test = df[500:]
 
 
 
@@ -70,16 +92,14 @@ X_train = train[:,1:]
 Y_test = test[:,0]
 X_test = test[:,1:]
 
-regressor = LogisticRegression(max_iter = 1000)
+regressor = LogisticRegression(max_iter = 10000)
 regressor.fit(X_train, Y_train)
 
 print("Logistic Regressor: \n")
 
-cols = ['Constant']+keep_cols[1:]
+cols = ['Constant']+[x for x in df.columns if x != 'Survived']
 coefs = [regressor.intercept_[0]]+[x for x in regressor.coef_[0]]
 
-print("\tfeatures: "+str(cols)+"\n")
-
 for data in [(X_train,Y_train),(X_test,Y_test)]:
     predictions = regressor.predict(data[0])
 
@@ -92,28 +112,29 @@ for data in [(X_train,Y_train),(X_test,Y_test)]:
 
     print("\t"+str(result[0]/result[1]))
 
+print(len(cols),len(coefs))
 print("\n\tcoefficients: "+str({cols[i]:round(coefs[i],4) for i in range(len(cols))})+"\n")
 
-regressor = LinearRegression()
-regressor.fit(X_train, Y_train)
+# regressor = LinearRegression()
+# regressor.fit(X_train, Y_train)
 
-print("\nLinear Regressor: \n")
+# print("\nLinear Regressor: \n")
 
-cols = ['Constant']+keep_cols[1:]
-coefs = [regressor.intercept_]+[x for x in regressor.coef_]
+# cols = ['Constant']+[x for x in df.columns][1:]
+# coefs = [regressor.intercept_]+[x for x in regressor.coef_]
 
-print("\tfeatures: "+str(cols)+"\n")
+# print("\tfeatures: "+str(cols)+"\n")
 
-for data in [(X_train,Y_train),(X_test,Y_test)]:
-    predictions = regressor.predict(data[0])
+# for data in [(X_train,Y_train),(X_test,Y_test)]:
+#     predictions = regressor.predict(data[0])
 
-    result = [0,0]
-    for i in range(len(predictions)):
-        output = 1 if predictions[i]>0.5 else 0
-        result[1]+=1
-        if output == data[1][i]:
-            result[0]+=1
+#     result = [0,0]
+#     for i in range(len(predictions)):
+#         output = 1 if predictions[i]>0.5 else 0
+#         result[1]+=1
+#         if output == data[1][i]:
+#             result[0]+=1
 
-    print("\t"+str(result[0]/result[1]))
+#     print("\t"+str(result[0]/result[1]))
 
-print("\n\tcoefficients: "+str({cols[i]:round(coefs[i],4) for i in range(len(cols))}))
+# print("\n\tcoefficients: "+str({cols[i]:round(coefs[i],4) for i in range(len(cols))}))
