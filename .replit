@@ -1,1 +1,1 @@
-run = "python analysis.py"
+run = "python quiz_4-16/quiz_analysis.py"
