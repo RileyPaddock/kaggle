@@ -3,6 +3,10 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import LogisticRegression
 
+from warnings import simplefilter
+from sklearn.exceptions import ConvergenceWarning
+simplefilter("ignore", category=ConvergenceWarning)
+
 df = pd.read_csv('/home/runner/kaggle/titanic/train.csv')
 #data manipulation
 def convert_sex_to_int(sex):
@@ -92,7 +96,7 @@ def run_model(df_train, df_test, pred_type, iter):
     test_y = test[:,0]
     test_x = test[:,1:]
 
-    regressor = LogisticRegression(max_iter = iter)
+    regressor = LogisticRegression(random_state = 0, max_iter = iter)
     regressor.fit(train_x, train_y)
 
     test = (test_x,test_y) if pred_type == 'test' else (train_x, train_y)
@@ -106,28 +110,60 @@ def run_model(df_train, df_test, pred_type, iter):
             result[0]+=1
     return result[0]/result[1]
 
-features = ['Survived']
-accuracy = 0
+
+#forward selection
+
+# features = ['Survived']
+# accuracy = 0
+# while True:
+#     curr_lvl_max = (None,0)
+#     for feature in [x for x in df.columns]:
+#         if feature not in features:
+#             temp_cols = features + [feature]
+#             df_train = df[temp_cols][:500]
+#             df_test = df[temp_cols][500:]
+#             test_accuracy = run_model(df_train, df_test,'test', 1000)
+#             if test_accuracy > curr_lvl_max[1]:
+#                 curr_lvl_max = (feature,test_accuracy)
+#     if curr_lvl_max[1] > accuracy:
+#         accuracy = curr_lvl_max[1]
+#         features.append(curr_lvl_max[0])
+#     else:
+#         break
+# print(features)
+# df_train = df[features][:500]
+# df_test = df[features][500:]
+# print(run_model(df_train, df_test, 'train',1000))
+# print(run_model(df_train, df_test, 'test',1000))
+
+#Backward selection
+features = [x for x in df.columns if x != 'Survived']
+print(features[0])
+print(len(features))
+accuracy =  run_model(df[:500], df[500:],'test', 100)
+print(accuracy,len(features))
+removals = []
+baseline = accuracy
 while True:
-    curr_lvl_max = (None,0)
-    for feature in [x for x in df.columns]:
-        if feature not in features:
-            temp_cols = features + [feature]
-            df_train = df[temp_cols][:500]
-            df_test = df[temp_cols][500:]
-            test_accuracy = run_model(df_train, df_test,'test', 1000)
-            if test_accuracy > curr_lvl_max[1]:
-                curr_lvl_max = (feature,test_accuracy)
-    if curr_lvl_max[1] > accuracy:
-        accuracy = curr_lvl_max[1]
-        features.append(curr_lvl_max[0])
-    else:
+    complete = True
+    for feature in [x for x in features if x not in removals]:
+        temp_cols = [x for x in features if x not in [feature]+removals]
+        df_train = df[['Survived']+temp_cols][:500]
+        df_test = df[['Survived']+temp_cols][500:]
+        test_accuracy = run_model(df_train, df_test,'test', 100)
+        print(feature,round(test_accuracy,4),round(accuracy,4))
+        if test_accuracy >= accuracy:
+            accuracy = test_accuracy
+            removals.append(feature)
+            print(feature)
+            complete = False
+    if complete:
         break
-print(features)
-df_train = df[features][:500]
-df_test = df[features][500:]
-print(run_model(df_train, df_test, 'train',1000))
-print(run_model(df_train, df_test, 'test',1000))
+
+df_train = df[['Survived']+[x for x in features if x not in removals]][:500]
+df_test = df[['Survived']+[x for x in features if x not in removals]][500:]
+print(run_model(df_train, df_test, 'train',100))
+print(run_model(df_train, df_test, 'test',100))
 
 
 
