@@ -1,12 +1,19 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn import preprocessing
+from sklearn import utils
 from sklearn.neighbors import KNeighborsClassifier
+
+import time
+
 
 
 from warnings import simplefilter
 from sklearn.exceptions import ConvergenceWarning
 simplefilter("ignore", category=ConvergenceWarning)
+
+lab_enc = preprocessing.LabelEncoder()
 
 df = pd.read_csv('/home/runner/kaggle/titanic/train.csv')
 #data manipulation
@@ -61,46 +68,66 @@ del df['Embarked']
 
 df = df[["Survived", "Sex", "Pclass", "Fare", "Age", "SibSp"]][:100]
 
+# df_book = pd.read_csv('/home/runner/kaggle/book_data.csv')
+# def convert_book_type(book_type):
+#     if book_type == "children's book":
+#         return 0
+#     elif book_type == 'adult book':
+#         return 1
 
-def leave_one_out_validation(df, k_val):
+# df_book['book type'] = df_book['book type'].apply(convert_book_type)
+
+def leave_one_out_validation(x,y, KNN, pred_col,iterations):
     correct = 0
-    for i in range(len(df.index)):
-        removed_row = df.loc[i]
-        leave_one_out_df = df.drop(index = i)
-        data = np.array(leave_one_out_df)
-        data_y = [y for y in data[:,0]]
-        data_x = [[y for y in x] for x in data[:,1:]]
-        KNN = KNeighborsClassifier(n_neighbors = k_val)
-        KNN.fit(data_x, data_y)
-
-        test_y = np.array(removed_row)[0]
-        test_x = [x for x in np.array(removed_row)][1:]
-        if KNN.predict([test_x]) == test_y:
+    for i in range(iterations):
+        removed_row = x[i]
+        removed_result = y[i]
+        leave_one_out_y = np.delete(y,i, axis = 0)
+        leave_one_out_x = np.delete(x,i,axis = 0)
+        
+        if KNN.fit(leave_one_out_x, leave_one_out_y).predict([removed_row]) == removed_result:
             correct+=1
         
     return correct/len(df.index)
 
+
+pred_col = 'Survived'
+
+
+
 #Standard Normalization
 stnd_norm = df.copy()
-for col in stnd_norm:
-    stnd_norm[col] = stnd_norm[col]/stnd_norm[col].max()
+for col in stnd_norm.columns:
+    if col != pred_col:
+        stnd_norm[col] = stnd_norm[col]/stnd_norm[col].max()
 
 #Minmax Normalization
 minmax = df.copy()
-for col in minmax:
-    minmax[col] = (minmax[col]-minmax[col].min())/(minmax[col].max() - minmax[col].min())
+for col in minmax.columns:
+    if col != pred_col:
+        minmax[col] = (minmax[col]-minmax[col].min())/(minmax[col].max() - minmax[col].min())
 
 #Z-value Normalization
 z_value = df.copy()
-for col in z_value:
-    z_value[col] = (z_value[col] - z_value[col].mean())/z_value[col].std()
+for col in z_value.columns:
+    if col != pred_col:
+        z_value[col] = (z_value[col] - z_value[col].mean())/(z_value[col].std())
 
-k_vals = [1,3,5,10,15,20,30,40,50,75]
-prediction_accuracies = []
-for k in k_vals:
-    prediction_accuracies.append(leave_one_out_validation(df, k))
-    print(k)
+begin_time = time.time()
+k_vals = [x for x in range(100) if x%2 == 1]
+for normal_method in [df, stnd_norm, minmax, z_value]:
+    normal_method = normal_method[[pred_col]+[x for x in normal_method.columns if x != pred_col]]
+    data_y = np.array([y for y in np.array(normal_method)[:,0]])
+    data_x = np.array([[y for y in x] for x in np.array(normal_method)[:,1:]])
+    prediction_accuracies = []
+    for k in k_vals:
+        KNN = KNeighborsClassifier(n_neighbors = k)
+        prediction_accuracies.append(leave_one_out_validation(data_x, data_y, KNN, pred_col, len(data_x)))
 
-plt.plot([x for x in range(len(k_vals))],prediction_accuracies)
+    plt.plot(k_vals, prediction_accuracies)
+end_time = time.time()
+print('time taken(relative to Jusin):', 0.15/0.4 * (end_time - begin_time))
 
-plt.show()
+
+plt.legend(["unscaled", "simple scaling", "min-max", "z-score"])
+plt.savefig('Titanic KNN accuracy.png')
