@@ -151,7 +151,7 @@ while True:
         df_train = df[['Survived']+temp_cols][:500]
         df_test = df[['Survived']+temp_cols][500:]
         test_accuracy = run_model(df_train, df_test,'test', 100)
-        print(feature,round(test_accuracy,4),round(accuracy,4))
+
         if test_accuracy >= accuracy:
             accuracy = test_accuracy
             removals.append(feature)
